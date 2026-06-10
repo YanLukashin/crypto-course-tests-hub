@@ -1,0 +1,56 @@
+name: Deploy Crypto Tests Hub to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/deploy-tests-pages.yml"
+      - "Платформа крипто-курса/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Rebuild course data
+        working-directory: "./Платформа крипто-курса"
+        run: node scripts/build-course-data.mjs
+
+      - name: Add Pages marker
+        run: touch "./Платформа крипто-курса/.nojekyll"
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: "./Платформа крипто-курса"
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
