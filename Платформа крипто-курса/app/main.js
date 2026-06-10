@@ -1,4 +1,4 @@
-const APP_VERSION = '2026-06-10-1';
+const APP_VERSION = '2026-06-10-2';
 const DATA_URL = `./data/course-data.json?v=${APP_VERSION}`;
 const STORAGE_KEY = 'crypto-course-tests-v1';
 const MOBILE_BREAKPOINT = 1100;
@@ -932,6 +932,16 @@ const extractRepeatedExpectedCategories = (question) => {
     counts[key] = (counts[key] || 0) + 1;
   }
 
+  const optionLabelsByKey = {};
+  if (Array.isArray(question.options)) {
+    for (const option of question.options) {
+      const optionKey = normalizeChoiceKey(option.key);
+      if (optionKey && option.label) {
+        optionLabelsByKey[optionKey] = String(option.label).trim();
+      }
+    }
+  }
+
   const tableRows = parseMarkdownTableRows(question.correctAnswer);
   const labelsByKey = {};
   for (const row of tableRows) {
@@ -957,7 +967,7 @@ const extractRepeatedExpectedCategories = (question) => {
     .filter((key) => counts[key] > 1)
     .map((key) => ({
       key,
-      label: labelsByKey[key] || String(key || '')
+      label: labelsByKey[key] || optionLabelsByKey[key] || String(key || '')
     }));
 };
 
