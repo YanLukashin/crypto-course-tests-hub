@@ -2,7 +2,7 @@ const APP_VERSION = '2026-06-15-1';
 const DATA_URL = `./data/course-data.json?v=${APP_VERSION}`;
 const STORAGE_KEY = 'crypto-course-tests-v1';
 const MOBILE_BREAKPOINT = 1100;
-const AVAILABLE_MODULE_IDS = new Set(['lesson-1', 'lesson-2', 'lesson-3', 'lesson-4']);
+const AVAILABLE_MODULE_IDS = new Set(['lesson-1', 'lesson-2', 'lesson-3', 'lesson-4', 'lesson-5']);
 const DISPLAY_MODULES = [
   { number: 1, id: 'lesson-1', title: 'Введение + Основы блокчейна' },
   { number: 2, id: 'lesson-2', title: 'Биржи, безопасная покупка и инфраструктура' },
