@@ -1,8 +1,8 @@
-const APP_VERSION = '2026-07-19-1';
+const APP_VERSION = '2026-07-22-1';
 const DATA_URL = `./data/course-data.json?v=${APP_VERSION}`;
 const STORAGE_KEY = 'crypto-course-tests-v1';
 const MOBILE_BREAKPOINT = 1100;
-const AVAILABLE_MODULE_IDS = new Set(['lesson-1', 'lesson-2', 'lesson-3', 'lesson-4', 'lesson-5', 'lesson-6', 'lesson-7', 'lesson-8', 'lesson-9', 'lesson-11', 'lesson-12']);
+const AVAILABLE_MODULE_IDS = new Set(['lesson-1', 'lesson-2', 'lesson-3', 'lesson-4', 'lesson-5', 'lesson-6', 'lesson-7', 'lesson-8', 'lesson-9', 'lesson-11', 'lesson-12', 'lesson-13']);
 const DISPLAY_MODULES = [
   { number: 1, id: 'lesson-1', title: 'Введение + Основы блокчейна' },
   { number: 2, id: 'lesson-2', title: 'Биржи, безопасная покупка и инфраструктура' },
@@ -16,7 +16,7 @@ const DISPLAY_MODULES = [
   { number: 10, id: 'lesson-10', title: 'DeFi: совместная сборка пула' },
   { number: 11, id: 'lesson-11', title: 'Стратегии на падающем и боковом рынке' },
   { number: 12, id: 'lesson-12', title: 'Стратегии при малом депозите ($200–$1000)' },
-  { number: 13, id: 'lesson-13', title: 'AI для анализа крипто-проектов' },
+  { number: 13, id: 'lesson-13', title: 'ИИ для анализа криптопроектов' },
   { number: 14, id: 'lesson-14', title: 'Polymarket + Аирдропы 2026: новая парадигма' },
   { number: 15, id: 'lesson-15', title: 'Регуляторика РФ/ЕС/США в 2026: дедлайн 1 июля и что после' },
   { number: 16, id: 'lesson-16', title: 'Защита личной стратегии (выпускной)' }
@@ -350,6 +350,9 @@ const normalizeMatchingExpectedMap = (rawExpected) => {
 const countMapMatches = (expected, actual) =>
   Object.keys(expected).reduce((total, key) => (String(expected[key]) === String(actual[key]) ? total + 1 : total), 0);
 
+const mapContainsExpectedPairs = (actual, required) =>
+  Object.keys(required).every((key) => String(required[key]) === String(actual[key]));
+
 const invertMap = (source) => {
   const inverted = {};
 
@@ -430,14 +433,31 @@ const gradeQuestion = (question, rawAnswer) => {
 
   if (grading.mode === 'matching_text') {
     const actual = parseAnswerMap(rawAnswer || '');
+    const invertedActual = invertMap(actual);
     const expected = normalizeMatchingExpectedMap(grading.expectedMap || {});
     const directMatches = countMapMatches(expected, actual);
-    const invertedMatches = countMapMatches(expected, invertMap(actual));
+    const invertedMatches = countMapMatches(expected, invertedActual);
     const matchedPairs = Math.max(directMatches, invertedMatches);
     const totalPairs = Object.keys(expected).length;
-    const requiredPairs = Number(grading.minCorrect || totalPairs || 0);
-    const correct = matchedPairs >= requiredPairs && totalPairs > 0;
-    return { auto: true, score: correct ? 1 : 0, correct, matchedPairs, totalPairs, requiredPairs };
+    const minCorrect = Number(grading.minCorrect || totalPairs || 0);
+    const requiredPairs = normalizeMatchingExpectedMap(grading.requiredPairs || {});
+    const requiredPairCount = Object.keys(requiredPairs).length;
+    const requiredPairsSatisfied =
+      requiredPairCount === 0 ||
+      mapContainsExpectedPairs(actual, requiredPairs) ||
+      mapContainsExpectedPairs(invertedActual, requiredPairs);
+    const correct = matchedPairs >= minCorrect && totalPairs > 0 && requiredPairsSatisfied;
+    return {
+      auto: true,
+      score: correct ? 1 : 0,
+      correct,
+      matchedPairs,
+      totalPairs,
+      minCorrect,
+      requiredPairs: minCorrect,
+      requiredPairCount,
+      requiredPairsSatisfied
+    };
   }
 
   if (grading.mode === 'ordering') {
@@ -469,7 +489,19 @@ const getModuleResult = (module) => {
   }).length;
   const percent = module.questions.length ? Math.round((score / module.questions.length) * 100) : 0;
   const passValue = Number(module.passThresholdValue || 0);
-  const passed = passValue > 0 ? score >= passValue : module.questions.length > 0 && score === module.questions.length;
+  const scoreThresholdPassed =
+    passValue > 0 ? score >= passValue : module.questions.length > 0 && score === module.questions.length;
+  const requiredQuestionNumbers = unique(
+    (Array.isArray(module.requiredQuestionNumbers) ? module.requiredQuestionNumbers : [])
+      .map((number) => Number(number))
+      .filter(Number.isFinite)
+  );
+  const failedRequiredQuestionNumbers = requiredQuestionNumbers.filter((number) => {
+    const questionIndex = module.questions.findIndex((question) => question.number === number);
+    return questionIndex < 0 || grades[questionIndex]?.correct !== true;
+  });
+  const requiredQuestionsPassed = failedRequiredQuestionNumbers.length === 0;
+  const passed = scoreThresholdPassed && requiredQuestionsPassed;
 
   return {
     score,
@@ -477,6 +509,10 @@ const getModuleResult = (module) => {
     answered,
     percent,
     passed,
+    scoreThresholdPassed,
+    requiredQuestionsPassed,
+    requiredQuestionNumbers,
+    failedRequiredQuestionNumbers,
     submitted: moduleState.submitted,
     submittedAt: moduleState.submittedAt
   };
@@ -633,11 +669,13 @@ const matchingHint = (question) => {
   const values = Object.values(expectedMap);
   const allShort = values.every((value) => String(value).length <= 2);
   const requiredPairs = Number(question.grading?.minCorrect || Object.keys(expectedMap).length || 0);
+  const mandatoryPairCount = Object.keys(question.grading?.requiredPairs || {}).length;
   const totalPairs = Object.keys(expectedMap).length;
+  const mandatoryHint = mandatoryPairCount ? ` Обязательных пар: ${mandatoryPairCount}.` : '';
 
   if (isCategorizedMatchingQuestion(question)) {
     return totalPairs && requiredPairs < totalPairs
-      ? `Выберите категорию для каждого пункта. Нужно совпасть минимум по ${requiredPairs} из ${totalPairs}.`
+      ? `Выберите категорию для каждого пункта. Нужно совпасть минимум по ${requiredPairs} из ${totalPairs}.${mandatoryHint}`
       : 'Выберите категорию для каждого пункта.';
   }
 
@@ -648,7 +686,7 @@ const matchingHint = (question) => {
       .join(', ');
 
     return totalPairs && requiredPairs < totalPairs
-      ? `Нужно совпасть минимум по ${requiredPairs} из ${totalPairs} пар. Формат ответа: ${sample}`
+      ? `Нужно совпасть минимум по ${requiredPairs} из ${totalPairs} пар.${mandatoryHint} Формат ответа: ${sample}`
       : `Формат ответа: ${sample}`;
   }
 
@@ -1202,7 +1240,7 @@ const renderFeedback = (question, moduleId) => {
     question.interaction === 'matching_text' && Number.isFinite(grade.matchedPairs)
       ? `<div style="margin-top:8px;"><strong>Совпало пар:</strong> ${grade.matchedPairs}/${grade.totalPairs}${
           grade.requiredPairs && grade.requiredPairs !== grade.totalPairs ? ` · минимум нужно ${grade.requiredPairs}` : ''
-        }</div>`
+        }${grade.requiredPairCount ? ` · обязательные пары: ${grade.requiredPairsSatisfied ? 'выполнены' : 'есть ошибка'}` : ''}</div>`
       : '';
 
   return `
@@ -1224,8 +1262,12 @@ const renderModuleSummary = (module) => {
       : 'Тест не сдан'
     : `Ответов заполнено: ${result.answered}/${result.total}`;
 
+  const requiredDetails =
+    result.submitted && !result.requiredQuestionsPassed
+      ? ` • обязательные вопросы с ошибкой: ${result.failedRequiredQuestionNumbers.join(', ')}`
+      : '';
   const details = result.submitted
-    ? `${result.score}/${result.total} • ${result.percent}% • ${formatDateTime(result.submittedAt)}`
+    ? `${result.score}/${result.total} • ${result.percent}%${requiredDetails} • ${formatDateTime(result.submittedAt)}`
     : `${module.passThreshold || 'Проходной уровень не указан'} • ${module.attemptsAllowed || 'Попытки не указаны'}`;
 
   return `
@@ -1353,14 +1395,20 @@ const selectModule = (moduleId) => {
 
 const buildResultText = (module) => {
   const result = getModuleResult(module);
-  return [
+  const lines = [
     `${state.data.siteTitle}`,
     `Занятие ${module.number}: ${module.title}`,
     `Результат: ${result.score}/${result.total} (${result.percent}%)`,
     `Статус: ${result.passed ? 'сдан' : 'не сдан'}`,
     `Проходной уровень: ${module.passThreshold || '—'}`,
-    `Завершён: ${formatDateTime(result.submittedAt)}`
-  ].join('\n');
+  ];
+
+  if (!result.requiredQuestionsPassed) {
+    lines.push(`Обязательные вопросы с ошибкой: ${result.failedRequiredQuestionNumbers.join(', ')}`);
+  }
+
+  lines.push(`Завершён: ${formatDateTime(result.submittedAt)}`);
+  return lines.join('\n');
 };
 
 const submitModuleTest = (moduleId) => {

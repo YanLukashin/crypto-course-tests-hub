@@ -68,6 +68,24 @@ const validateQuestion = (lessonId, question) => {
     if (grading.mode !== 'matching_text' || !grading.expectedMap || Object.keys(grading.expectedMap).length === 0) {
       fail(`${where}: matching_text требует непустой grading.expectedMap`);
     }
+
+    const expectedKeys = Object.keys(grading.expectedMap || {});
+    const minCorrect = Number(grading.minCorrect ?? expectedKeys.length);
+    if (!Number.isInteger(minCorrect) || minCorrect < 1 || minCorrect > expectedKeys.length) {
+      fail(`${where}: grading.minCorrect должен быть целым числом от 1 до числа пар`);
+    }
+
+    if (grading.requiredPairs !== undefined) {
+      if (!grading.requiredPairs || typeof grading.requiredPairs !== 'object' || Array.isArray(grading.requiredPairs)) {
+        fail(`${where}: grading.requiredPairs должен быть объектом`);
+      }
+
+      for (const [key, value] of Object.entries(grading.requiredPairs)) {
+        if (!(key in grading.expectedMap) || String(grading.expectedMap[key]) !== String(value)) {
+          fail(`${where}: обязательная пара ${key}–${value} должна совпадать с grading.expectedMap`);
+        }
+      }
+    }
   }
 
   if (question.interaction === 'ordering') {
@@ -93,6 +111,20 @@ const normalizeModule = (lessonId, raw) => {
 
   raw.questions.forEach((question) => validateQuestion(lessonId, question));
 
+  const questionNumbers = new Set(raw.questions.map((question) => question.number));
+  const requiredQuestionNumbers = raw.requiredQuestionNumbers ?? [];
+  if (!Array.isArray(requiredQuestionNumbers)) {
+    fail(`${lessonId}: requiredQuestionNumbers должен быть массивом`);
+  }
+  if (new Set(requiredQuestionNumbers).size !== requiredQuestionNumbers.length) {
+    fail(`${lessonId}: requiredQuestionNumbers содержит повторы`);
+  }
+  for (const number of requiredQuestionNumbers) {
+    if (!Number.isInteger(number) || !questionNumbers.has(number)) {
+      fail(`${lessonId}: обязательный вопрос ${number} отсутствует в questions`);
+    }
+  }
+
   const totalQuestions = raw.questions.length;
   const passThresholdValue =
     typeof raw.passThresholdValue === 'number' ? raw.passThresholdValue : 0;
@@ -107,6 +139,7 @@ const normalizeModule = (lessonId, raw) => {
     estimatedTime: raw.estimatedTime || '',
     passThreshold: raw.passThreshold || '',
     passThresholdValue,
+    requiredQuestionNumbers,
     attemptsAllowed: raw.attemptsAllowed || '',
     questions: raw.questions
   };
