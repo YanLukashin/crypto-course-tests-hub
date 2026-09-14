@@ -1,4 +1,4 @@
-const APP_VERSION = '2026-09-14-1';
+const APP_VERSION = '2026-09-14-2';
 const COURSE_DATA_URLS = {
   cs14: `./data/course-data.json?v=${APP_VERSION}`,
   cs15: `./data/cs15/course-data.json?v=${APP_VERSION}`
@@ -49,7 +49,7 @@ const sidebarBackdropEl = document.getElementById('sidebar-backdrop');
 
 const state = {
   courses: {},
-  courseId: 'cs14',
+  courseId: 'cs15',
   cs15LoadError: false,
   data: null,
   selectedModuleId: null,
@@ -641,27 +641,6 @@ const moduleStatusLabel = (module) => {
   return result.passed ? `Сдан · ${result.score}/${result.total}` : `Не сдан · ${result.score}/${result.total}`;
 };
 
-const renderCourseSwitcher = () => {
-  const availableCourseIds = Object.keys(COURSE_CONFIG).filter((courseId) => state.courses[courseId]);
-  if (availableCourseIds.length < 2) {
-    return '';
-  }
-
-  return `
-    <div class="course-switcher" role="group" aria-label="Выбор потока">
-      ${availableCourseIds
-        .map(
-          (courseId) => `
-            <button class="course-switch ${state.courseId === courseId ? 'active' : ''}" data-course-id="${courseId}" type="button">
-              ${escapeHtml(getCourseConfig(courseId).label)}
-            </button>
-          `
-        )
-        .join('')}
-    </div>
-  `;
-};
-
 const renderSidebar = () => {
   if (!state.data) {
     sidebarEl.innerHTML = '<div class="brand"><div class="brand-title">Нет данных</div></div>';
@@ -693,8 +672,6 @@ const renderSidebar = () => {
       <div class="brand-code">Поток ${escapeHtml(getCourseConfig().label)}</div>
     </div>
 
-    ${renderCourseSwitcher()}
-
     <div class="stat">
       <div class="stat-panel">
         <div class="stat-label">Доступных тестов завершено</div>
@@ -725,8 +702,6 @@ const renderHub = () => {
     <section class="screen">
       <h1 class="headline">${escapeHtml(state.data.siteTitle)}</h1>
       <div class="subline">[Static LMS] поток ${escapeHtml(getCourseConfig().label)} · портал проверки знаний BlockCapital Crypto Summit</div>
-
-      ${renderCourseSwitcher()}
 
       <div class="panel">
         <span class="badge">Занятий в хабе: ${getDisplayModules().length}</span>
@@ -1591,7 +1566,7 @@ const selectModule = (moduleId) => {
 
 const readRoute = () => {
   const params = new URLSearchParams(window.location.search);
-  const courseId = params.get('course') === 'cs15' ? 'cs15' : 'cs14';
+  const courseId = params.get('course') === 'cs14' ? 'cs14' : 'cs15';
   const lessonNumber = Number(params.get('lesson'));
 
   return {
@@ -1604,8 +1579,8 @@ const syncUrl = () => {
   const url = new URL(window.location.href);
   const module = state.view === 'module' ? getSelectedModule() : null;
 
-  if (state.courseId === 'cs15') {
-    url.searchParams.set('course', 'cs15');
+  if (state.courseId === 'cs14') {
+    url.searchParams.set('course', 'cs14');
   } else {
     url.searchParams.delete('course');
   }
@@ -1617,36 +1592,6 @@ const syncUrl = () => {
   }
 
   window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
-};
-
-const selectCourse = (courseId, lessonNumber = null) => {
-  if (!state.courses[courseId]) {
-    return;
-  }
-
-  if (state.data) {
-    saveState();
-  }
-
-  state.courseId = courseId;
-  state.data = state.courses[courseId];
-  loadState(courseId);
-  ensureValidSelection();
-
-  const directModule = lessonNumber
-    ? getModules().find((module) => module.number === lessonNumber && isModuleAvailable(module))
-    : null;
-  if (directModule) {
-    state.selectedModuleId = directModule.id;
-    state.view = 'module';
-  } else if (lessonNumber) {
-    state.view = 'hub';
-  }
-
-  saveState();
-  syncUrl();
-  render();
-  closeSidebarDrawer();
 };
 
 const buildResultText = (module) => {
@@ -1787,12 +1732,6 @@ const syncLayoutForViewport = () => {
 };
 
 sidebarEl.addEventListener('click', (event) => {
-  const courseButton = event.target.closest('[data-course-id]');
-  if (courseButton) {
-    selectCourse(courseButton.dataset.courseId);
-    return;
-  }
-
   const button = event.target.closest('[data-nav]');
   if (!button) {
     return;
@@ -1809,12 +1748,6 @@ sidebarEl.addEventListener('click', (event) => {
 });
 
 mainEl.addEventListener('click', (event) => {
-  const courseButton = event.target.closest('[data-course-id]');
-  if (courseButton) {
-    selectCourse(courseButton.dataset.courseId);
-    return;
-  }
-
   const navButton = event.target.closest('[data-nav]');
   if (navButton) {
     if (navButton.dataset.nav === 'hub') {
@@ -1990,22 +1923,18 @@ const boot = async () => {
     return response.json();
   };
 
-  const cs14 = await loadCourseData('cs14');
-  state.courses.cs14 = cs14;
-
   try {
-    state.courses.cs15 = await loadCourseData('cs15');
+    state.courses[route.courseId] = await loadCourseData(route.courseId);
   } catch (error) {
-    console.warn('CS15 data is unavailable; CS14 remains available.', error);
-    state.cs15LoadError = true;
+    if (route.courseId === 'cs15') {
+      state.cs15LoadError = true;
+      renderCs15LoadError();
+      return;
+    }
+    throw error;
   }
 
-  if (route.courseId === 'cs15' && !state.courses.cs15) {
-    renderCs15LoadError();
-    return;
-  }
-
-  state.courseId = route.courseId === 'cs15' && state.courses.cs15 ? 'cs15' : 'cs14';
+  state.courseId = route.courseId;
   state.data = state.courses[state.courseId];
   loadState(state.courseId);
   ensureValidSelection();
