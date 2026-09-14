@@ -1,4 +1,4 @@
-const APP_VERSION = '2026-09-14-2';
+const APP_VERSION = '2026-09-14-3';
 const COURSE_DATA_URLS = {
   cs14: `./data/course-data.json?v=${APP_VERSION}`,
   cs15: `./data/cs15/course-data.json?v=${APP_VERSION}`
@@ -695,13 +695,13 @@ const renderHub = () => {
   const stats = getOverallStats();
   const isCs15 = state.courseId === 'cs15';
   const availabilityNote = isCs15
-    ? 'Сейчас открыт только принятый тест занятия 2 CS15. Остальные тесты CS15 появятся после отдельной приёмки.'
+    ? 'Выберите пройденное занятие. После проверки ответов вы увидите результат и объяснения ошибок. Остальные тесты появятся по мере готовности.'
     : 'Остальные занятия откроются по мере готовности тестов. Тест — образовательный контент, не инвестиционная рекомендация.';
 
   return `
     <section class="screen">
       <h1 class="headline">${escapeHtml(state.data.siteTitle)}</h1>
-      <div class="subline">[Static LMS] поток ${escapeHtml(getCourseConfig().label)} · портал проверки знаний BlockCapital Crypto Summit</div>
+      <div class="subline">${escapeHtml(getCourseConfig().label)} · проверка знаний BlockCapital Crypto Summit</div>
 
       <div class="panel">
         <span class="badge">Занятий в хабе: ${getDisplayModules().length}</span>
@@ -711,7 +711,7 @@ const renderHub = () => {
       </div>
 
       <div class="panel">
-        <strong>${isCs15 ? 'Доступен тест занятия 2 CS15.' : 'Доступны принятые тесты CS14.'}</strong>
+        <strong>${isCs15 ? 'Тесты по пройденным занятиям CS15' : 'Доступны принятые тесты CS14.'}</strong>
         <p class="muted">${availabilityNote}</p>
       </div>
 

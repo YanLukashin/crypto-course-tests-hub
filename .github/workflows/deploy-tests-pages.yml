@@ -43,6 +43,7 @@ jobs:
         run: |
           node scripts/test-grading-rules.mjs
           node scripts/test-cs15-grading.mjs
+          node scripts/test-cs15-lesson1.mjs
 
       - name: Add Pages marker
         run: touch "./Платформа крипто-курса/.nojekyll"

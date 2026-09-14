@@ -165,6 +165,43 @@ const normalizeModule = (lessonId, raw, cohort) => {
   }
 
   const questionNumbers = new Set(raw.questions.map((question) => question.number));
+  if (questionNumbers.size !== raw.questions.length) {
+    fail(`${lessonId}: номера вопросов должны быть уникальными`);
+  }
+  if (cohort.id === 'cs15') {
+    const bloomLevels = new Set(['Знание', 'Понимание', 'Применение', 'Анализ', 'Синтез', 'Оценка']);
+    const difficulties = new Set(['Лёгкая', 'Средняя', 'Сложная']);
+    if (raw.questions.length !== 10 || !Array.from({ length: 10 }, (_, i) => i + 1).every((n) => questionNumbers.has(n))) {
+      fail(`${lessonId}: CS15 требует десять вопросов с номерами 1–10`);
+    }
+    if (!raw.assessmentMapFile || !raw.sourceFile || !/^[a-f0-9]{64}$/.test(raw.sourceSha256 || '') || !/^[a-f0-9]{64}$/.test(raw.keySha256 || '')) {
+      fail(`${lessonId}: CS15 требует ссылку на карту целей, исходник и SHA-256 теста/ключа`);
+    }
+    for (const question of raw.questions) {
+      const where = `${lessonId} / вопрос ${question.number}`;
+      if (question.interaction === 'open_text') fail(`${where}: CS15 требует автопроверяемый ответ`);
+      if (!Array.isArray(question.goalIds) || !question.goalIds.length || !question.goalIds.every((id) => typeof id === 'string' && id.trim())) {
+        fail(`${where}: отсутствуют коды целей goalIds`);
+      }
+      if (!bloomLevels.has(question.bloomLevel) || !question.bloomRationale?.trim()) {
+        fail(`${where}: требуется уровень Блума и основание по фактическому действию`);
+      }
+      if (question.bloomMinimumLevel !== undefined || question.bloomLevelRange !== undefined) {
+        const range = question.bloomLevelRange;
+        if (!Array.isArray(range) || !range.length || !range.every((level) => bloomLevels.has(level)) || !range.includes(question.bloomLevel) || !range.includes(question.bloomMinimumLevel)) {
+          fail(`${where}: пограничная классификация требует диапазон и минимально достаточный уровень`);
+        }
+      }
+      if (!Array.isArray(question.slideRefs) || !question.slideRefs.length || !question.slideRefs.every((ref) => typeof ref === 'string' && ref.trim())) {
+        fail(`${where}: отсутствуют ссылки на фактические слайды`);
+      }
+      if (!difficulties.has(question.difficulty)) fail(`${where}: сложность задаётся отдельно от Блума`);
+    }
+    // Сборщик проверяет наличие данных; содержательную верность уровней принимает независимый QA.
+    if (new Set(raw.questions.map((q) => q.bloomMinimumLevel || q.bloomLevel)).size < 3) {
+      fail(`${lessonId}: требуется не менее трёх обоснованных уровней Блума`);
+    }
+  }
   const requiredQuestionNumbers = raw.requiredQuestionNumbers ?? [];
   if (!Array.isArray(requiredQuestionNumbers)) {
     fail(`${lessonId}: requiredQuestionNumbers должен быть массивом`);
@@ -190,6 +227,11 @@ const normalizeModule = (lessonId, raw, cohort) => {
     title: raw.title,
     testTitle: raw.testTitle || raw.title,
     sourceFile: raw.sourceFile || '',
+    ...(cohort.id === 'cs15' ? {
+      sourceSha256: raw.sourceSha256,
+      keySha256: raw.keySha256,
+      assessmentMapFile: raw.assessmentMapFile
+    } : {}),
     totalQuestions,
     estimatedTime: raw.estimatedTime || '',
     passThreshold: raw.passThreshold || '',
