@@ -1,11 +1,15 @@
 {
-  "generatedAt": "2026-07-22T10:52:16.950Z",
+  "generatedAt": "2026-09-14T06:58:51.977Z",
+  "courseId": "cs14",
+  "contentVersion": "",
   "siteTitle": "Тесты курса BlockCapital Crypto Summit",
   "courseTitle": "BlockCapital Crypto Summit — криптовалютная грамотность",
   "modules": [
     {
       "id": "lesson-1",
       "number": 1,
+      "courseId": "cs14",
+      "contentVersion": "",
       "title": "Введение + Основы блокчейна",
       "testTitle": "Тест — Занятие 1 «Введение + Основы блокчейна»",
       "sourceFile": "Занятие 1 «Введение + Основы блокчейна»/Занятие_01_Тест_готовый.md",
@@ -15,6 +19,7 @@
       "passThresholdValue": 6,
       "requiredQuestionNumbers": [],
       "attemptsAllowed": "1",
+      "instructionsMarkdown": "",
       "questions": [
         {
           "number": 1,
@@ -414,6 +419,8 @@
     {
       "id": "lesson-2",
       "number": 2,
+      "courseId": "cs14",
+      "contentVersion": "",
       "title": "Биржи, безопасная покупка и инфраструктура",
       "testTitle": "Тест — Занятие 2 «Биржи, безопасная покупка и инфраструктура»",
       "sourceFile": "Занятие 2 «Биржи, безопасная покупка и инфраструктура»/Занятие_02_Тест_готовый.md",
@@ -423,6 +430,7 @@
       "passThresholdValue": 6,
       "requiredQuestionNumbers": [],
       "attemptsAllowed": "1",
+      "instructionsMarkdown": "",
       "questions": [
         {
           "number": 1,
@@ -870,6 +878,8 @@
     {
       "id": "lesson-3",
       "number": 3,
+      "courseId": "cs14",
+      "contentVersion": "",
       "title": "Майнинг и работа сетей",
       "testTitle": "Тест — Занятие 3 «Майнинг и работа сетей»",
       "sourceFile": "Занятие 3 «Майнинг и работа сетей»/Занятие_03_Тест_готовый.md",
@@ -879,6 +889,7 @@
       "passThresholdValue": 6,
       "requiredQuestionNumbers": [],
       "attemptsAllowed": "1",
+      "instructionsMarkdown": "",
       "questions": [
         {
           "number": 1,
@@ -1305,6 +1316,8 @@
     {
       "id": "lesson-4",
       "number": 4,
+      "courseId": "cs14",
+      "contentVersion": "",
       "title": "Анализ криптопроектов и инвестиции",
       "testTitle": "Тест — Занятие 4 «Анализ криптопроектов и инвестиции»",
       "sourceFile": "Занятие 4 «Анализ криптопроектов и инвестиции»/Занятие_04_Тест_готовый.md",
@@ -1314,6 +1327,7 @@
       "passThresholdValue": 6,
       "requiredQuestionNumbers": [],
       "attemptsAllowed": "1",
+      "instructionsMarkdown": "",
       "questions": [
         {
           "number": 1,
@@ -1763,6 +1777,8 @@
     {
       "id": "lesson-5",
       "number": 5,
+      "courseId": "cs14",
+      "contentVersion": "",
       "title": "Стейкинг",
       "testTitle": "Тест — Занятие 5 «Стейкинг»",
       "sourceFile": "Занятие 5 «Стейкинг»/Занятие_05_Тест_готовый.md",
@@ -1772,6 +1788,7 @@
       "passThresholdValue": 6,
       "requiredQuestionNumbers": [],
       "attemptsAllowed": "1",
+      "instructionsMarkdown": "",
       "questions": [
         {
           "number": 1,
@@ -2221,6 +2238,8 @@
     {
       "id": "lesson-6",
       "number": 6,
+      "courseId": "cs14",
+      "contentVersion": "",
       "title": "RWA + стейблкоины в новой регуляторной реальности 2026",
       "testTitle": "Тест — Занятие 6 «RWA + стейблкоины в новой регуляторной реальности 2026»",
       "sourceFile": "Занятие 6 «RWA + стейблкоины в новой регуляторной реальности 2026»/Занятие_06_Тест_готовый.md",
@@ -2230,6 +2249,7 @@
       "passThresholdValue": 6,
       "requiredQuestionNumbers": [],
       "attemptsAllowed": "1",
+      "instructionsMarkdown": "",
       "questions": [
         {
           "number": 1,
@@ -2664,6 +2684,8 @@
     {
       "id": "lesson-7",
       "number": 7,
+      "courseId": "cs14",
+      "contentVersion": "",
       "title": "Алгоритмический трейдинг + психология решений",
       "testTitle": "Тест — Занятие 7 «Алгоритмический трейдинг + психология решений»",
       "sourceFile": "Занятие 7 «Алгоритмический трейдинг + психология решений»/Занятие_07_Тест_готовый.md",
@@ -2673,6 +2695,7 @@
       "passThresholdValue": 6,
       "requiredQuestionNumbers": [],
       "attemptsAllowed": "1",
+      "instructionsMarkdown": "",
       "questions": [
         {
           "number": 1,
@@ -3113,6 +3136,8 @@
     {
       "id": "lesson-8",
       "number": 8,
+      "courseId": "cs14",
+      "contentVersion": "",
       "title": "Управление портфелем и ребаланс",
       "testTitle": "Тест — Занятие 8 «Управление портфелем и ребаланс»",
       "sourceFile": "Занятие 8 «Управление портфелем и ребаланс»/Занятие_08_Тест_готовый.md",
@@ -3122,6 +3147,7 @@
       "passThresholdValue": 6,
       "requiredQuestionNumbers": [],
       "attemptsAllowed": "1",
+      "instructionsMarkdown": "",
       "questions": [
         {
           "number": 1,
@@ -3576,6 +3602,8 @@
     {
       "id": "lesson-9",
       "number": 9,
+      "courseId": "cs14",
+      "contentVersion": "",
       "title": "DeFi: теория и механики",
       "testTitle": "Тест — Занятие 9 «DeFi: теория и механики»",
       "sourceFile": "Занятие 9 «DeFi теория и механики»/Занятие_09_Тест_готовый.md",
@@ -3585,6 +3613,7 @@
       "passThresholdValue": 6,
       "requiredQuestionNumbers": [],
       "attemptsAllowed": "1",
+      "instructionsMarkdown": "",
       "questions": [
         {
           "number": 1,
@@ -4036,6 +4065,8 @@
     {
       "id": "lesson-11",
       "number": 11,
+      "courseId": "cs14",
+      "contentVersion": "",
       "title": "Стратегии на падающем и боковом рынке",
       "testTitle": "Тест — Занятие 11 «Стратегии на падающем и боковом рынке»",
       "sourceFile": "Занятие 11 «Стратегии на падающем и боковом рынке»/Занятие_11_Тест_готовый.md",
@@ -4045,6 +4076,7 @@
       "passThresholdValue": 6,
       "requiredQuestionNumbers": [],
       "attemptsAllowed": "1",
+      "instructionsMarkdown": "",
       "questions": [
         {
           "number": 1,
@@ -4519,6 +4551,8 @@
     {
       "id": "lesson-12",
       "number": 12,
+      "courseId": "cs14",
+      "contentVersion": "",
       "title": "Стратегии при малом депозите ($200–$1000)",
       "testTitle": "Тест — Занятие 12 «Стратегии при малом депозите ($200–$1000)»",
       "sourceFile": "Занятие 12 «Стратегии при малом депозите ($200–$1000)»/Занятие_12_Тест_готовый.md",
@@ -4528,6 +4562,7 @@
       "passThresholdValue": 6,
       "requiredQuestionNumbers": [],
       "attemptsAllowed": "1",
+      "instructionsMarkdown": "",
       "questions": [
         {
           "number": 1,
@@ -4975,6 +5010,8 @@
     {
       "id": "lesson-13",
       "number": 13,
+      "courseId": "cs14",
+      "contentVersion": "",
       "title": "ИИ для анализа криптопроектов",
       "testTitle": "Тест — Занятие 13 «ИИ для анализа криптопроектов»",
       "sourceFile": "Занятие 13 «AI для анализа криптопроектов»/Занятие_13_Тест_готовый.md",
@@ -4987,6 +5024,7 @@
         10
       ],
       "attemptsAllowed": "повторные",
+      "instructionsMarkdown": "",
       "questions": [
         {
           "number": 1,

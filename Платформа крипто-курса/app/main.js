@@ -1,9 +1,13 @@
-const APP_VERSION = '2026-07-22-1';
-const DATA_URL = `./data/course-data.json?v=${APP_VERSION}`;
-const STORAGE_KEY = 'crypto-course-tests-v1';
+const APP_VERSION = '2026-09-14-1';
+const COURSE_DATA_URLS = {
+  cs14: `./data/course-data.json?v=${APP_VERSION}`,
+  cs15: `./data/cs15/course-data.json?v=${APP_VERSION}`
+};
+const CS14_STORAGE_KEY = 'crypto-course-tests-v1';
+const CS15_STORAGE_KEY = 'crypto-course-tests-cs15-v1';
 const MOBILE_BREAKPOINT = 1100;
-const AVAILABLE_MODULE_IDS = new Set(['lesson-1', 'lesson-2', 'lesson-3', 'lesson-4', 'lesson-5', 'lesson-6', 'lesson-7', 'lesson-8', 'lesson-9', 'lesson-11', 'lesson-12', 'lesson-13']);
-const DISPLAY_MODULES = [
+const CS14_AVAILABLE_MODULE_IDS = new Set(['lesson-1', 'lesson-2', 'lesson-3', 'lesson-4', 'lesson-5', 'lesson-6', 'lesson-7', 'lesson-8', 'lesson-9', 'lesson-11', 'lesson-12', 'lesson-13']);
+const CS14_DISPLAY_MODULES = [
   { number: 1, id: 'lesson-1', title: 'Введение + Основы блокчейна' },
   { number: 2, id: 'lesson-2', title: 'Биржи, безопасная покупка и инфраструктура' },
   { number: 3, id: 'lesson-3', title: 'Майнинг и работа сетей' },
@@ -21,6 +25,22 @@ const DISPLAY_MODULES = [
   { number: 15, id: 'lesson-15', title: 'Регуляторика РФ/ЕС/США в 2026: дедлайн 1 июля и что после' },
   { number: 16, id: 'lesson-16', title: 'Защита личной стратегии (выпускной)' }
 ];
+const COURSE_CONFIG = {
+  cs14: {
+    label: 'CS14 — архив',
+    navigationLabel: 'Занятия 1–16',
+    storageKey: CS14_STORAGE_KEY,
+    availableModuleIds: CS14_AVAILABLE_MODULE_IDS,
+    displayModules: CS14_DISPLAY_MODULES
+  },
+  cs15: {
+    label: 'CS15 — текущий поток',
+    navigationLabel: 'Тесты CS15',
+    storageKey: CS15_STORAGE_KEY,
+    availableModuleIds: null,
+    displayModules: null
+  }
+};
 
 const sidebarEl = document.getElementById('sidebar');
 const mainEl = document.getElementById('main');
@@ -28,11 +48,17 @@ const mobileNavToggleEl = document.getElementById('mobile-nav-toggle');
 const sidebarBackdropEl = document.getElementById('sidebar-backdrop');
 
 const state = {
+  courses: {},
+  courseId: 'cs14',
+  cs15LoadError: false,
   data: null,
   selectedModuleId: null,
   view: 'hub',
   tests: {}
 };
+
+const getCourseConfig = (courseId = state.courseId) => COURSE_CONFIG[courseId] || COURSE_CONFIG.cs14;
+const getStorageKey = (courseId = state.courseId) => getCourseConfig(courseId).storageKey;
 
 const saveState = () => {
   const payload = {
@@ -41,12 +67,15 @@ const saveState = () => {
     tests: state.tests
   };
 
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+  localStorage.setItem(getStorageKey(), JSON.stringify(payload));
 };
 
-const loadState = () => {
-  const raw = localStorage.getItem(STORAGE_KEY);
+const loadState = (courseId = state.courseId) => {
+  const raw = localStorage.getItem(getStorageKey(courseId));
   if (!raw) {
+    state.selectedModuleId = null;
+    state.view = 'hub';
+    state.tests = {};
     return;
   }
 
@@ -56,7 +85,10 @@ const loadState = () => {
     state.view = parsed?.view === 'module' ? 'module' : 'hub';
     state.tests = parsed?.tests && typeof parsed.tests === 'object' ? parsed.tests : {};
   } catch {
-    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(getStorageKey(courseId));
+    state.selectedModuleId = null;
+    state.view = 'hub';
+    state.tests = {};
   }
 };
 
@@ -265,6 +297,7 @@ const parseMapToken = (value) => {
 
 const normalizeAnswerMapObject = (raw) => {
   const entries = Object.entries(raw || {})
+    .filter(([key]) => key !== 'additionalChoice')
     .map(([key, value]) => [parseMapToken(key), parseMapToken(value)])
     .filter(([, value]) => value);
 
@@ -389,11 +422,19 @@ const getModuleState = (moduleId) => {
 };
 
 const getModules = () => state.data?.modules || [];
-const isModuleAvailable = (moduleOrId) =>
-  AVAILABLE_MODULE_IDS.has(typeof moduleOrId === 'string' ? moduleOrId : moduleOrId?.id);
+const isModuleAvailable = (moduleOrId) => {
+  const moduleId = typeof moduleOrId === 'string' ? moduleOrId : moduleOrId?.id;
+  const configuredIds = getCourseConfig().availableModuleIds;
+  return configuredIds ? configuredIds.has(moduleId) : getModules().some((module) => module.id === moduleId);
+};
 const getAvailableModules = () => getModules().filter((module) => isModuleAvailable(module));
-const getDisplayModules = () =>
-  DISPLAY_MODULES.map((moduleMeta) => {
+const getDisplayModules = () => {
+  const configuredModules = getCourseConfig().displayModules;
+  if (!configuredModules) {
+    return getModules();
+  }
+
+  return configuredModules.map((moduleMeta) => {
     const liveModule = getModules().find((module) => module.id === moduleMeta.id);
     return liveModule
       ? liveModule
@@ -410,6 +451,7 @@ const getDisplayModules = () =>
           isPlaceholder: true
         };
   });
+};
 
 const getModuleById = (moduleId) => getModules().find((module) => module.id === moduleId) || null;
 
@@ -446,7 +488,16 @@ const gradeQuestion = (question, rawAnswer) => {
       requiredPairCount === 0 ||
       mapContainsExpectedPairs(actual, requiredPairs) ||
       mapContainsExpectedPairs(invertedActual, requiredPairs);
-    const correct = matchedPairs >= minCorrect && totalPairs > 0 && requiredPairsSatisfied;
+    const additionalExpected = grading.additionalChoiceKey;
+    const additionalActual =
+      rawAnswer && typeof rawAnswer === 'object' && !Array.isArray(rawAnswer)
+        ? String(rawAnswer.additionalChoice || '').toLowerCase()
+        : '';
+    const additionalChoiceCorrect =
+      additionalExpected === undefined ||
+      additionalActual === String(additionalExpected).toLowerCase();
+    const correct =
+      matchedPairs >= minCorrect && totalPairs > 0 && requiredPairsSatisfied && additionalChoiceCorrect;
     return {
       auto: true,
       score: correct ? 1 : 0,
@@ -456,7 +507,9 @@ const gradeQuestion = (question, rawAnswer) => {
       minCorrect,
       requiredPairs: minCorrect,
       requiredPairCount,
-      requiredPairsSatisfied
+      requiredPairsSatisfied,
+      additionalChoiceRequired: additionalExpected !== undefined,
+      additionalChoiceCorrect
     };
   }
 
@@ -471,6 +524,31 @@ const gradeQuestion = (question, rawAnswer) => {
   }
 
   return { auto: false, score: 0, correct: false };
+};
+
+const getSelectedAnswerKeys = (rawAnswer) => {
+  if (Array.isArray(rawAnswer)) {
+    return rawAnswer.map((value) => normalizeChoiceKey(value)).filter(Boolean);
+  }
+
+  if (rawAnswer && typeof rawAnswer === 'object') {
+    return [];
+  }
+
+  const key = normalizeChoiceKey(rawAnswer || '');
+  return key ? [key] : [];
+};
+
+const getCriticalError = (question, rawAnswer) => {
+  const criticalKeys = Array.isArray(question.criticalAnswerKeys)
+    ? question.criticalAnswerKeys.map((key) => normalizeChoiceKey(key)).filter(Boolean)
+    : [];
+  const selectedKeys = getSelectedAnswerKeys(rawAnswer);
+  const selectedCriticalKeys = selectedKeys.filter((key) => criticalKeys.includes(key));
+
+  return selectedCriticalKeys.length
+    ? { questionNumber: question.number, selectedKeys: selectedCriticalKeys }
+    : null;
 };
 
 const getModuleResult = (module) => {
@@ -501,7 +579,11 @@ const getModuleResult = (module) => {
     return questionIndex < 0 || grades[questionIndex]?.correct !== true;
   });
   const requiredQuestionsPassed = failedRequiredQuestionNumbers.length === 0;
-  const passed = scoreThresholdPassed && requiredQuestionsPassed;
+  const criticalErrors = module.questions
+    .map((question) => getCriticalError(question, moduleState.answers[question.number]))
+    .filter(Boolean);
+  const hasCriticalErrors = criticalErrors.length > 0;
+  const passed = scoreThresholdPassed && requiredQuestionsPassed && !hasCriticalErrors;
 
   return {
     score,
@@ -513,6 +595,8 @@ const getModuleResult = (module) => {
     requiredQuestionsPassed,
     requiredQuestionNumbers,
     failedRequiredQuestionNumbers,
+    criticalErrors,
+    hasCriticalErrors,
     submitted: moduleState.submitted,
     submittedAt: moduleState.submittedAt
   };
@@ -557,6 +641,27 @@ const moduleStatusLabel = (module) => {
   return result.passed ? `Сдан · ${result.score}/${result.total}` : `Не сдан · ${result.score}/${result.total}`;
 };
 
+const renderCourseSwitcher = () => {
+  const availableCourseIds = Object.keys(COURSE_CONFIG).filter((courseId) => state.courses[courseId]);
+  if (availableCourseIds.length < 2) {
+    return '';
+  }
+
+  return `
+    <div class="course-switcher" role="group" aria-label="Выбор потока">
+      ${availableCourseIds
+        .map(
+          (courseId) => `
+            <button class="course-switch ${state.courseId === courseId ? 'active' : ''}" data-course-id="${courseId}" type="button">
+              ${escapeHtml(getCourseConfig(courseId).label)}
+            </button>
+          `
+        )
+        .join('')}
+    </div>
+  `;
+};
+
 const renderSidebar = () => {
   if (!state.data) {
     sidebarEl.innerHTML = '<div class="brand"><div class="brand-title">Нет данных</div></div>';
@@ -585,7 +690,10 @@ const renderSidebar = () => {
     <div class="brand">
       <div class="brand-code">[Crypto Summit Test Hub]</div>
       <div class="brand-title">Тесты курса BlockCapital</div>
+      <div class="brand-code">Поток ${escapeHtml(getCourseConfig().label)}</div>
     </div>
+
+    ${renderCourseSwitcher()}
 
     <div class="stat">
       <div class="stat-panel">
@@ -601,29 +709,35 @@ const renderSidebar = () => {
     <div class="nav-section-title">Навигация</div>
     <button class="nav-item ${state.view === 'hub' ? 'active' : ''}" data-nav="hub">Все тесты курса</button>
 
-    <div class="nav-section-title">Занятия 1–16</div>
+    <div class="nav-section-title">${escapeHtml(getCourseConfig().navigationLabel)}</div>
     ${moduleButtons}
   `;
 };
 
 const renderHub = () => {
   const stats = getOverallStats();
+  const isCs15 = state.courseId === 'cs15';
+  const availabilityNote = isCs15
+    ? 'Сейчас открыт только принятый тест занятия 2 CS15. Остальные тесты CS15 появятся после отдельной приёмки.'
+    : 'Остальные занятия откроются по мере готовности тестов. Тест — образовательный контент, не инвестиционная рекомендация.';
 
   return `
     <section class="screen">
       <h1 class="headline">${escapeHtml(state.data.siteTitle)}</h1>
-      <div class="subline">[Static LMS] портал проверки знаний для живого потока BlockCapital Crypto Summit</div>
+      <div class="subline">[Static LMS] поток ${escapeHtml(getCourseConfig().label)} · портал проверки знаний BlockCapital Crypto Summit</div>
+
+      ${renderCourseSwitcher()}
 
       <div class="panel">
-        <span class="badge">Занятий в хабе: ${DISPLAY_MODULES.length}</span>
+        <span class="badge">Занятий в хабе: ${getDisplayModules().length}</span>
         <span class="badge">Открыто сейчас: ${stats.total}</span>
         <span class="badge orange">Завершено: ${stats.finished}</span>
         <span class="badge cyan">Сдано: ${stats.passed}</span>
       </div>
 
       <div class="panel">
-        <strong>Сейчас доступны тесты занятий 1 и 2.</strong>
-        <p class="muted">Остальные занятия откроются по мере готовности тестов. Тест — образовательный контент, не инвестиционная рекомендация.</p>
+        <strong>${isCs15 ? 'Доступен тест занятия 2 CS15.' : 'Доступны принятые тесты CS14.'}</strong>
+        <p class="muted">${availabilityNote}</p>
       </div>
 
       <div class="module-grid">
@@ -680,9 +794,9 @@ const matchingHint = (question) => {
   }
 
   if (allShort && Object.keys(expectedMap).length > 0) {
-    const sample = Object.entries(expectedMap)
+    const sample = Object.keys(expectedMap)
       .slice(0, 3)
-      .map(([key, value]) => `${key}-${value}`)
+      .map((key) => `${key}-__`)
       .join(', ');
 
     return totalPairs && requiredPairs < totalPairs
@@ -1030,7 +1144,57 @@ const getCategorizedMatchingData = (question) => {
 
 const isCategorizedMatchingQuestion = (question) => Boolean(getCategorizedMatchingData(question));
 
+const getMatchingAnswerRecord = (rawAnswer) => {
+  const pairs = parseAnswerMap(rawAnswer);
+  const additionalChoice =
+    rawAnswer && typeof rawAnswer === 'object' && !Array.isArray(rawAnswer)
+      ? String(rawAnswer.additionalChoice || '')
+      : '';
+
+  return additionalChoice ? { ...pairs, additionalChoice } : pairs;
+};
+
+const renderMatchingAdditionalChoice = (question, answer, disabled) => {
+  const additionalChoice = question.additionalChoice;
+  if (!additionalChoice || !Array.isArray(additionalChoice.options) || additionalChoice.options.length < 2) {
+    return '';
+  }
+
+  const selected =
+    answer && typeof answer === 'object' && !Array.isArray(answer)
+      ? String(answer.additionalChoice || '')
+      : '';
+
+  return `
+    <fieldset class="additional-choice">
+      <legend>Дополнительное утверждение</legend>
+      <div class="markdown">${markdownToHtml(additionalChoice.promptMarkdown || '')}</div>
+      <div class="additional-choice-options">
+        ${additionalChoice.options
+          .map(
+            (option) => `
+              <label class="option-item">
+                <input
+                  type="radio"
+                  name="matching-additional-${question.number}"
+                  data-question="${question.number}"
+                  data-input-type="matching-additional"
+                  value="${escapeHtml(option.key)}"
+                  ${selected === String(option.key) ? 'checked' : ''}
+                  ${disabled ? 'disabled' : ''}
+                />
+                ${escapeHtml(option.label)}
+              </label>
+            `
+          )
+          .join('')}
+      </div>
+    </fieldset>
+  `;
+};
+
 const renderMatchingInput = (question, answer, disabled) => {
+  const additionalChoice = renderMatchingAdditionalChoice(question, answer, disabled);
   const categoryLayout = getCategorizedMatchingData(question);
   if (categoryLayout) {
     const current = parseAnswerMap(answer);
@@ -1073,6 +1237,7 @@ const renderMatchingInput = (question, answer, disabled) => {
           })
           .join('')}
       </div>
+      ${additionalChoice}
     `;
   }
 
@@ -1081,6 +1246,7 @@ const renderMatchingInput = (question, answer, disabled) => {
     return `
       <div class="muted">${matchingHint(question)}</div>
       <textarea class="text-area" data-question="${question.number}" data-input-type="matching" ${disabled ? 'disabled' : ''}>${escapeHtml(answer || '')}</textarea>
+      ${additionalChoice}
     `;
   }
 
@@ -1136,6 +1302,7 @@ const renderMatchingInput = (question, answer, disabled) => {
           .join('')}
       </div>
     </div>
+    ${additionalChoice}
   `;
 };
 
@@ -1236,6 +1403,7 @@ const renderFeedback = (question, moduleId) => {
   const grade = gradeQuestion(question, moduleState.answers[question.number]);
   const className = grade.correct ? 'correct' : 'wrong';
   const autoLabel = grade.correct ? 'Ответ засчитан' : 'Ответ не засчитан';
+  const criticalError = getCriticalError(question, moduleState.answers[question.number]);
   const matchingMeta =
     question.interaction === 'matching_text' && Number.isFinite(grade.matchedPairs)
       ? `<div style="margin-top:8px;"><strong>Совпало пар:</strong> ${grade.matchedPairs}/${grade.totalPairs}${
@@ -1247,6 +1415,14 @@ const renderFeedback = (question, moduleId) => {
     <div class="feedback ${className}">
       <div><strong>${autoLabel}</strong></div>
       ${matchingMeta}
+      ${
+        grade.additionalChoiceRequired
+          ? `<div style="margin-top:8px;"><strong>Ответ на дополнительное утверждение:</strong> ${
+              grade.additionalChoiceCorrect ? 'засчитан' : 'не засчитан'
+            }</div>`
+          : ''
+      }
+      ${criticalError ? '<div class="critical-feedback">Критическая ошибка: этот выбранный вариант нужно исправить до зачёта.</div>' : ''}
       <div style="margin-top:8px;"><strong>Правильный ответ:</strong><br/>${markdownToHtml(question.correctAnswer || '—')}</div>
       <div style="margin-top:8px;"><strong>Пояснение:</strong><br/>${markdownToHtml(question.explanation || '—')}</div>
       <div style="margin-top:8px;"><strong>Критерий:</strong> ${escapeHtml(question.scoring || '—')}</div>
@@ -1266,12 +1442,16 @@ const renderModuleSummary = (module) => {
     result.submitted && !result.requiredQuestionsPassed
       ? ` • обязательные вопросы с ошибкой: ${result.failedRequiredQuestionNumbers.join(', ')}`
       : '';
+  const criticalDetails =
+    result.submitted && result.hasCriticalErrors
+      ? ` • критические ошибки: ${result.criticalErrors.map((item) => item.questionNumber).join(', ')}`
+      : '';
   const details = result.submitted
-    ? `${result.score}/${result.total} • ${result.percent}%${requiredDetails} • ${formatDateTime(result.submittedAt)}`
+    ? `${result.score}/${result.total} • ${result.percent}%${requiredDetails}${criticalDetails} • ${formatDateTime(result.submittedAt)}`
     : `${module.passThreshold || 'Проходной уровень не указан'} • ${module.attemptsAllowed || 'Попытки не указаны'}`;
 
   return `
-    <div class="result-strip">
+    <div class="result-strip ${result.submitted && result.hasCriticalErrors ? 'critical-result' : ''}">
       <strong>${status}</strong>
       <div class="muted">${details}</div>
     </div>
@@ -1296,8 +1476,16 @@ const renderModuleTest = () => {
         <span class="badge">${module.questions.length} вопросов</span>
         <span class="badge orange">${escapeHtml(module.estimatedTime || '—')}</span>
         <span class="badge cyan">${escapeHtml(module.passThreshold || '—')}</span>
-        <span class="badge">${escapeHtml(module.attemptsAllowed || '—')} попытки</span>
+        <span class="badge">${escapeHtml(module.attemptsAllowed || '—')}</span>
       </div>
+
+      ${
+        state.courseId === 'cs15' && module.instructionsMarkdown
+          ? `<div class="panel module-instructions"><strong>Правила теста</strong><div class="markdown">${markdownToHtml(
+              module.instructionsMarkdown
+            )}</div></div>`
+          : ''
+      }
 
       ${renderModuleSummary(module)}
 
@@ -1326,6 +1514,12 @@ const renderModuleTest = () => {
               </div>
 
               <div class="markdown">${markdownToHtml(promptMarkdown)}</div>
+
+              ${
+                state.courseId === 'cs15' && question.additionalChoice
+                  ? `<div class="question-scoring"><strong>Критерий:</strong> ${escapeHtml(question.scoring || '—')}</div>`
+                  : ''
+              }
 
               <div class="field-block">
                 ${renderQuestionInput(question, answer, submitted)}
@@ -1377,6 +1571,7 @@ const ensureValidSelection = () => {
 const selectHub = () => {
   state.view = 'hub';
   saveState();
+  syncUrl();
   render();
   closeSidebarDrawer();
 };
@@ -1389,14 +1584,87 @@ const selectModule = (moduleId) => {
   state.selectedModuleId = moduleId;
   state.view = 'module';
   saveState();
+  syncUrl();
+  render();
+  closeSidebarDrawer();
+};
+
+const readRoute = () => {
+  const params = new URLSearchParams(window.location.search);
+  const courseId = params.get('course') === 'cs15' ? 'cs15' : 'cs14';
+  const lessonNumber = Number(params.get('lesson'));
+
+  return {
+    courseId,
+    lessonNumber: Number.isInteger(lessonNumber) && lessonNumber > 0 ? lessonNumber : null
+  };
+};
+
+const syncUrl = () => {
+  const url = new URL(window.location.href);
+  const module = state.view === 'module' ? getSelectedModule() : null;
+
+  if (state.courseId === 'cs15') {
+    url.searchParams.set('course', 'cs15');
+  } else {
+    url.searchParams.delete('course');
+  }
+
+  if (module) {
+    url.searchParams.set('lesson', String(module.number));
+  } else {
+    url.searchParams.delete('lesson');
+  }
+
+  window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
+};
+
+const selectCourse = (courseId, lessonNumber = null) => {
+  if (!state.courses[courseId]) {
+    return;
+  }
+
+  if (state.data) {
+    saveState();
+  }
+
+  state.courseId = courseId;
+  state.data = state.courses[courseId];
+  loadState(courseId);
+  ensureValidSelection();
+
+  const directModule = lessonNumber
+    ? getModules().find((module) => module.number === lessonNumber && isModuleAvailable(module))
+    : null;
+  if (directModule) {
+    state.selectedModuleId = directModule.id;
+    state.view = 'module';
+  } else if (lessonNumber) {
+    state.view = 'hub';
+  }
+
+  saveState();
+  syncUrl();
   render();
   closeSidebarDrawer();
 };
 
 const buildResultText = (module) => {
   const result = getModuleResult(module);
+  const safetyErrorQuestionNumbers = new Set([
+    ...result.failedRequiredQuestionNumbers,
+    ...result.criticalErrors.map((item) => item.questionNumber)
+  ]);
+  const ordinaryErrorQuestionNumbers = module.questions
+    .filter((question) => {
+      const grade = gradeQuestion(question, getModuleState(module.id).answers[question.number]);
+      return grade.correct !== true && !safetyErrorQuestionNumbers.has(question.number);
+    })
+    .map((question) => question.number);
   const lines = [
     `${state.data.siteTitle}`,
+    `Поток: ${getCourseConfig().label}`,
+    `Курс: ${state.data.courseTitle || 'BlockCapital Crypto Summit'}`,
     `Занятие ${module.number}: ${module.title}`,
     `Результат: ${result.score}/${result.total} (${result.percent}%)`,
     `Статус: ${result.passed ? 'сдан' : 'не сдан'}`,
@@ -1405,6 +1673,14 @@ const buildResultText = (module) => {
 
   if (!result.requiredQuestionsPassed) {
     lines.push(`Обязательные вопросы с ошибкой: ${result.failedRequiredQuestionNumbers.join(', ')}`);
+  }
+
+  if (result.hasCriticalErrors) {
+    lines.push(`Критические ошибки: ${result.criticalErrors.map((item) => item.questionNumber).join(', ')}`);
+  }
+
+  if (ordinaryErrorQuestionNumbers.length) {
+    lines.push(`Обычные ошибки: ${ordinaryErrorQuestionNumbers.join(', ')}`);
   }
 
   lines.push(`Завершён: ${formatDateTime(result.submittedAt)}`);
@@ -1455,6 +1731,18 @@ const copyModuleResult = async (moduleId) => {
   }
 };
 
+const renderCs15LoadError = () => {
+  mainEl.innerHTML = `
+    <section class="screen">
+      <h1 class="headline">Тесты CS15 временно недоступны</h1>
+      <div class="panel">
+        <p>Не удалось загрузить тесты CS15. Обновите страницу или попробуйте позже.</p>
+        <button class="btn primary" data-action="retry-cs15-load" type="button">Повторить загрузку</button>
+      </div>
+    </section>
+  `;
+};
+
 const isMobileViewport = () => window.innerWidth <= MOBILE_BREAKPOINT;
 
 const closeSidebarDrawer = () => {
@@ -1499,6 +1787,12 @@ const syncLayoutForViewport = () => {
 };
 
 sidebarEl.addEventListener('click', (event) => {
+  const courseButton = event.target.closest('[data-course-id]');
+  if (courseButton) {
+    selectCourse(courseButton.dataset.courseId);
+    return;
+  }
+
   const button = event.target.closest('[data-nav]');
   if (!button) {
     return;
@@ -1515,6 +1809,12 @@ sidebarEl.addEventListener('click', (event) => {
 });
 
 mainEl.addEventListener('click', (event) => {
+  const courseButton = event.target.closest('[data-course-id]');
+  if (courseButton) {
+    selectCourse(courseButton.dataset.courseId);
+    return;
+  }
+
   const navButton = event.target.closest('[data-nav]');
   if (navButton) {
     if (navButton.dataset.nav === 'hub') {
@@ -1549,6 +1849,11 @@ mainEl.addEventListener('click', (event) => {
 
   if (action === 'copy-result') {
     copyModuleResult(moduleId);
+    return;
+  }
+
+  if (action === 'retry-cs15-load') {
+    window.location.reload();
   }
 });
 
@@ -1593,7 +1898,7 @@ mainEl.addEventListener('change', (event) => {
 
   if (target.matches('[data-input-type="matching-select"]')) {
     const question = Number(target.dataset.question);
-    const current = parseAnswerMap(moduleState.answers[question]);
+    const current = getMatchingAnswerRecord(moduleState.answers[question]);
     const matchKey = String(target.dataset.matchKey || '');
 
     if (target.value) {
@@ -1609,7 +1914,7 @@ mainEl.addEventListener('change', (event) => {
 
   if (target.matches('[data-input-type="matching-category"]')) {
     const question = Number(target.dataset.question);
-    const current = parseAnswerMap(moduleState.answers[question]);
+    const current = getMatchingAnswerRecord(moduleState.answers[question]);
     const matchKey = String(target.dataset.matchKey || '');
 
     if (target.value) {
@@ -1618,6 +1923,15 @@ mainEl.addEventListener('change', (event) => {
       delete current[matchKey];
     }
 
+    moduleState.answers[question] = current;
+    saveState();
+    return;
+  }
+
+  if (target.matches('[data-input-type="matching-additional"]')) {
+    const question = Number(target.dataset.question);
+    const current = getMatchingAnswerRecord(moduleState.answers[question]);
+    current.additionalChoice = target.value;
     moduleState.answers[question] = current;
     saveState();
   }
@@ -1664,18 +1978,50 @@ window.addEventListener('resize', () => {
 });
 
 const boot = async () => {
-  loadState();
   syncLayoutForViewport();
   renderMain();
 
-  const response = await fetch(DATA_URL, { cache: 'no-store' });
-  if (!response.ok) {
-    throw new Error(`Failed to load ${DATA_URL}`);
+  const route = readRoute();
+  const loadCourseData = async (courseId) => {
+    const response = await fetch(COURSE_DATA_URLS[courseId], { cache: 'no-store' });
+    if (!response.ok) {
+      throw new Error(`Failed to load ${COURSE_DATA_URLS[courseId]}`);
+    }
+    return response.json();
+  };
+
+  const cs14 = await loadCourseData('cs14');
+  state.courses.cs14 = cs14;
+
+  try {
+    state.courses.cs15 = await loadCourseData('cs15');
+  } catch (error) {
+    console.warn('CS15 data is unavailable; CS14 remains available.', error);
+    state.cs15LoadError = true;
   }
 
-  state.data = await response.json();
+  if (route.courseId === 'cs15' && !state.courses.cs15) {
+    renderCs15LoadError();
+    return;
+  }
+
+  state.courseId = route.courseId === 'cs15' && state.courses.cs15 ? 'cs15' : 'cs14';
+  state.data = state.courses[state.courseId];
+  loadState(state.courseId);
   ensureValidSelection();
+
+  const directModule = route.lessonNumber
+    ? getModules().find((module) => module.number === route.lessonNumber && isModuleAvailable(module))
+    : null;
+  if (directModule) {
+    state.selectedModuleId = directModule.id;
+    state.view = 'module';
+  } else if (route.lessonNumber) {
+    state.view = 'hub';
+  }
+
   saveState();
+  syncUrl();
   render();
 };
 

@@ -10,8 +10,22 @@ import path from 'node:path';
 // Скрипт просто валидирует их, сортирует по номеру и собирает course-data.json.
 
 const siteRoot = process.cwd();
-const lessonsDir = path.join(siteRoot, 'data', 'lessons');
-const outputPath = path.join(siteRoot, 'data', 'course-data.json');
+const cohorts = [
+  {
+    id: 'cs14',
+    lessonsDir: path.join(siteRoot, 'data', 'lessons'),
+    outputPath: path.join(siteRoot, 'data', 'course-data.json'),
+    siteTitle: 'Тесты курса BlockCapital Crypto Summit',
+    courseTitle: 'BlockCapital Crypto Summit — криптовалютная грамотность'
+  },
+  {
+    id: 'cs15',
+    lessonsDir: path.join(siteRoot, 'data', 'cs15', 'lessons'),
+    outputPath: path.join(siteRoot, 'data', 'cs15', 'course-data.json'),
+    siteTitle: 'Тесты CS15 BlockCapital Crypto Summit',
+    courseTitle: 'BlockCapital Crypto Summit — CS15'
+  }
+];
 
 const REQUIRED_MODULE_FIELDS = ['id', 'number', 'title', 'questions'];
 const VALID_INTERACTIONS = new Set([
@@ -24,6 +38,15 @@ const VALID_INTERACTIONS = new Set([
 
 const fail = (message) => {
   throw new Error(message);
+};
+
+const validateOptionKeys = (where, options, keys, field) => {
+  const optionKeys = new Set((options || []).map((option) => String(option.key || '')));
+  for (const key of keys) {
+    if (!optionKeys.has(String(key))) {
+      fail(`${where}: ${field} ссылается на отсутствующий вариант ${key}`);
+    }
+  }
 };
 
 const validateQuestion = (lessonId, question) => {
@@ -50,6 +73,7 @@ const validateQuestion = (lessonId, question) => {
     if (grading.mode !== 'single_choice' || !grading.correctKey) {
       fail(`${where}: single_choice требует grading.correctKey`);
     }
+    validateOptionKeys(where, question.options, [grading.correctKey], 'grading.correctKey');
   }
 
   if (question.interaction === 'multi_choice') {
@@ -59,6 +83,7 @@ const validateQuestion = (lessonId, question) => {
     if (grading.mode !== 'multi_choice' || !Array.isArray(grading.correctKeys) || grading.correctKeys.length === 0) {
       fail(`${where}: multi_choice требует непустой grading.correctKeys`);
     }
+    validateOptionKeys(where, question.options, grading.correctKeys, 'grading.correctKeys');
   }
 
   if (question.interaction === 'matching_text') {
@@ -86,6 +111,30 @@ const validateQuestion = (lessonId, question) => {
         }
       }
     }
+
+    validateOptionKeys(where, question.options, Object.values(grading.expectedMap), 'grading.expectedMap');
+
+    if (grading.additionalChoiceKey !== undefined || question.additionalChoice !== undefined) {
+      if (!question.additionalChoice || !Array.isArray(question.additionalChoice.options) || question.additionalChoice.options.length < 2) {
+        fail(`${where}: дополнительное утверждение требует минимум два варианта`);
+      }
+      if (!grading.additionalChoiceKey) {
+        fail(`${where}: дополнительное утверждение требует grading.additionalChoiceKey`);
+      }
+      validateOptionKeys(
+        where,
+        question.additionalChoice.options,
+        [grading.additionalChoiceKey],
+        'grading.additionalChoiceKey'
+      );
+    }
+  }
+
+  if (question.criticalAnswerKeys !== undefined) {
+    if (!Array.isArray(question.criticalAnswerKeys) || question.criticalAnswerKeys.length === 0) {
+      fail(`${where}: criticalAnswerKeys должен быть непустым массивом`);
+    }
+    validateOptionKeys(where, question.options, question.criticalAnswerKeys, 'criticalAnswerKeys');
   }
 
   if (question.interaction === 'ordering') {
@@ -98,7 +147,7 @@ const validateQuestion = (lessonId, question) => {
   }
 };
 
-const normalizeModule = (lessonId, raw) => {
+const normalizeModule = (lessonId, raw, cohort) => {
   for (const field of REQUIRED_MODULE_FIELDS) {
     if (!(field in raw)) {
       fail(`${lessonId}: отсутствует обязательное поле "${field}"`);
@@ -110,6 +159,10 @@ const normalizeModule = (lessonId, raw) => {
   }
 
   raw.questions.forEach((question) => validateQuestion(lessonId, question));
+
+  if (raw.courseId && raw.courseId !== cohort.id) {
+    fail(`${lessonId}: courseId ${raw.courseId} не соответствует сборке ${cohort.id}`);
+  }
 
   const questionNumbers = new Set(raw.questions.map((question) => question.number));
   const requiredQuestionNumbers = raw.requiredQuestionNumbers ?? [];
@@ -132,6 +185,8 @@ const normalizeModule = (lessonId, raw) => {
   return {
     id: raw.id,
     number: raw.number,
+    courseId: raw.courseId || cohort.id,
+    contentVersion: raw.contentVersion || '',
     title: raw.title,
     testTitle: raw.testTitle || raw.title,
     sourceFile: raw.sourceFile || '',
@@ -141,16 +196,17 @@ const normalizeModule = (lessonId, raw) => {
     passThresholdValue,
     requiredQuestionNumbers,
     attemptsAllowed: raw.attemptsAllowed || '',
+    instructionsMarkdown: raw.instructionsMarkdown || '',
     questions: raw.questions
   };
 };
 
-const buildData = async () => {
+const buildCohort = async (cohort) => {
   let entries = [];
   try {
-    entries = await fs.readdir(lessonsDir);
+    entries = await fs.readdir(cohort.lessonsDir);
   } catch {
-    fail(`Не найдена папка ${path.relative(siteRoot, lessonsDir)}`);
+    fail(`Не найдена папка ${path.relative(siteRoot, cohort.lessonsDir)}`);
   }
 
   const lessonFiles = entries
@@ -158,12 +214,12 @@ const buildData = async () => {
     .sort();
 
   if (lessonFiles.length === 0) {
-    fail('Нет файлов data/lessons/lesson-NN.json');
+    fail(`Нет файлов ${path.relative(siteRoot, cohort.lessonsDir)}/lesson-NN.json`);
   }
 
   const modules = [];
   for (const fileName of lessonFiles) {
-    const filePath = path.join(lessonsDir, fileName);
+    const filePath = path.join(cohort.lessonsDir, fileName);
     const rawText = await fs.readFile(filePath, 'utf8');
     let parsed;
     try {
@@ -171,27 +227,32 @@ const buildData = async () => {
     } catch (error) {
       fail(`${fileName}: невалидный JSON — ${error.message}`);
     }
-    modules.push(normalizeModule(fileName, parsed));
+    modules.push(normalizeModule(fileName, parsed, cohort));
   }
 
   modules.sort((a, b) => a.number - b.number);
 
   const payload = {
     generatedAt: new Date().toISOString(),
-    siteTitle: 'Тесты курса BlockCapital Crypto Summit',
-    courseTitle: 'BlockCapital Crypto Summit — криптовалютная грамотность',
+    courseId: cohort.id,
+    contentVersion: modules.find((module) => module.contentVersion)?.contentVersion || '',
+    siteTitle: cohort.siteTitle,
+    courseTitle: cohort.courseTitle,
     modules
   };
 
-  await fs.mkdir(path.dirname(outputPath), { recursive: true });
-  await fs.writeFile(outputPath, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
+  await fs.mkdir(path.dirname(cohort.outputPath), { recursive: true });
+  await fs.writeFile(cohort.outputPath, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
 
-  console.log(`OK: ${path.relative(siteRoot, outputPath)}`);
-  console.log(`Занятий: ${modules.length}`);
-  console.log(`Вопросов: ${modules.reduce((total, module) => total + module.questions.length, 0)}`);
+  console.log(`OK ${cohort.id}: ${path.relative(siteRoot, cohort.outputPath)}`);
+  console.log(`${cohort.id}: занятий ${modules.length}; вопросов ${modules.reduce((total, module) => total + module.questions.length, 0)}`);
 };
 
-buildData().catch((error) => {
+(async () => {
+  for (const cohort of cohorts) {
+    await buildCohort(cohort);
+  }
+})().catch((error) => {
   console.error(`Ошибка сборки: ${error.message}`);
   process.exitCode = 1;
 });
