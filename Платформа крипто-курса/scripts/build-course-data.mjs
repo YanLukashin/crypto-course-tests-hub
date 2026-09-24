@@ -237,6 +237,7 @@ const normalizeModule = (lessonId, raw, cohort) => {
     passThreshold: raw.passThreshold || '',
     passThresholdValue,
     requiredQuestionNumbers,
+    failureMessage: raw.failureMessage || '',
     attemptsAllowed: raw.attemptsAllowed || '',
     instructionsMarkdown: raw.instructionsMarkdown || '',
     questions: raw.questions

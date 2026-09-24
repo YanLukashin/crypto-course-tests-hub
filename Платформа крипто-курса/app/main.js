@@ -1,4 +1,4 @@
-const APP_VERSION = '2026-09-14-3';
+const APP_VERSION = '2026-09-24-2';
 const COURSE_DATA_URLS = {
   cs14: `./data/course-data.json?v=${APP_VERSION}`,
   cs15: `./data/cs15/course-data.json?v=${APP_VERSION}`
@@ -1292,7 +1292,7 @@ const renderOrderingInput = (question, answer, disabled) => {
         .map(
           (item, index) => `
             <label class="ordering-item">
-              <span class="ordering-text">${escapeHtml(item)}</span>
+              <span class="ordering-text">${escapeHtml(item.label ?? item)}</span>
               <select class="order-select" data-question="${question.number}" data-order-index="${index}" data-input-type="ordering" ${disabled ? 'disabled' : ''}>
                 <option value="">Позиция</option>
                 ${items
@@ -1410,7 +1410,7 @@ const renderModuleSummary = (module) => {
   const status = result.submitted
     ? result.passed
       ? 'Тест сдан'
-      : 'Тест не сдан'
+      : module.failureMessage || 'Тест не сдан'
     : `Ответов заполнено: ${result.answered}/${result.total}`;
 
   const requiredDetails =
@@ -1612,7 +1612,7 @@ const buildResultText = (module) => {
     `Курс: ${state.data.courseTitle || 'BlockCapital Crypto Summit'}`,
     `Занятие ${module.number}: ${module.title}`,
     `Результат: ${result.score}/${result.total} (${result.percent}%)`,
-    `Статус: ${result.passed ? 'сдан' : 'не сдан'}`,
+    `Статус: ${result.passed ? 'сдан' : module.failureMessage || 'не сдан'}`,
     `Проходной уровень: ${module.passThreshold || '—'}`,
   ];
 
