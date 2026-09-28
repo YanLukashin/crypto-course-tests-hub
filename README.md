@@ -9,7 +9,7 @@
 
 Основная рабочая инструкция — в `Платформа крипто-курса/README.md`.
 
-Студенческий интерфейс и корневой адрес открывают CS15. В нём подготовлены [тест занятия 1](https://yanlukashin.github.io/crypto-course-tests-hub/?lesson=1) и [тест занятия 2](https://yanlukashin.github.io/crypto-course-tests-hub/?lesson=2). Ссылок на CS14 в студентском интерфейсе нет; его данные и отдельный localStorage сохранены для архива.
+Студенческий интерфейс и корневой адрес открывают CS15. В нём подготовлены тесты занятий 1, 2, 3 и 5. Прямая ссылка на [тест занятия 5](https://yanlukashin.github.io/crypto-course-tests-hub/?course=cs15&lesson=5); [ученический PDF](https://yanlukashin.github.io/crypto-course-tests-hub/materials/cs15/lesson-05-test.pdf). Ссылок на CS14 в студентском интерфейсе нет; его данные и отдельный localStorage сохранены для архива.
 
 ## Чем отличается от ai-course-tests-hub
 
