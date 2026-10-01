@@ -30,7 +30,7 @@ assert.deepEqual(lesson.questions.map((q) => q.interaction), [
 assert.deepEqual(lesson.requiredQuestionNumbers, []);
 assert.equal(lesson.passThresholdValue, 8);
 assert.ok(lesson.questions.every((q) => !q.criticalAnswerKeys), 'Занятие 5 без критических ответов');
-assert.deepEqual(built.modules.map((module) => module.number), [1,2,3,5], 'Пропуск занятия 4 не меняет номера');
+assert.deepEqual(built.modules.map((module) => module.number), [1,2,3,5,6], 'Пропуск занятия 4 не меняет номера');
 assert.deepEqual(built.modules.find((module) => module.number === 5), { ...lesson, totalQuestions: 10 }, 'Сборка сохраняет модуль 5');
 
 assert.equal(lesson.sourceSha256, '43544893a612a034b513d671296962a7d428ae60d6fc0ef29005bc04b0491ab0');
@@ -38,7 +38,7 @@ assert.equal(lesson.keySha256, '302ed757ae4c5e12e1eb3b83791b43663b8d130a0fb55793
 
 state.courseId = 'cs15';
 state.data = built;
-assert.deepEqual([...getDisplayModules()].map((module) => module.number), [1,2,3,5]);
+assert.deepEqual([...getDisplayModules()].map((module) => module.number), [1,2,3,5,6]);
 const correct = { 1:'A', 2:'C', 3:'C', 4:{1:'A',2:'B',3:'C'}, 5:'B', 6:'D', 7:'B', 8:'D', 9:['B','D','E'], 10:'A' };
 const resultFor = (answers) => {
   state.tests[lesson.id] = { answers, submitted: true, submittedAt: '2026-09-28T00:00:00.000Z' };
