@@ -19,7 +19,7 @@ assert.ok(lesson.questions.every(q => q.options.length === 4 && q.slideRefs.ever
 assert.deepEqual(lesson.questions.map(q => q.grading.correctKey), ['B','C','C','A','D','B','A','D','C','B']);
 assert.deepEqual(lesson.requiredQuestionNumbers, []);
 assert.equal(lesson.passThresholdValue, 8);
-assert.deepEqual(built.modules.map(m => m.number), [1,2,3,5,6,7,8,9]);
+assert.deepEqual(built.modules.map(m => m.number), [1,2,3,5,6,7]);
 assert.deepEqual(built.modules.find(m => m.number === 7), {...lesson,totalQuestions:10});
 const element = {addEventListener(){},classList:{add(){},remove(){},toggle(){}},querySelectorAll(){return[];},setAttribute(){},removeAttribute(){},innerHTML:''};
 const context = vm.createContext({console,URL,URLSearchParams,setTimeout,clearTimeout,

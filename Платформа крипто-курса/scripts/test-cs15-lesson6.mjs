@@ -33,7 +33,7 @@ assert.ok(lesson.assessmentMapFile.endsWith('method-recording/01_специфи�
 assert.deepEqual(lesson.requiredQuestionNumbers, []);
 assert.equal(lesson.passThresholdValue, 8);
 assert.ok(lesson.questions.every((q) => !q.criticalAnswerKeys));
-assert.deepEqual(built.modules.map((m) => m.number), [1,2,3,5,6,7,8,9]);
+assert.deepEqual(built.modules.map((m) => m.number), [1,2,3,5,6,7]);
 assert.deepEqual(built.modules.find((m) => m.number === 6), { ...lesson, totalQuestions: 10 });
 assert.deepEqual(lesson.questions.map((q) => q.grading.correctKeys || q.grading.correctKey),
   ['B',['A','B'],'C','D','B','C','A','D','B','C']);
