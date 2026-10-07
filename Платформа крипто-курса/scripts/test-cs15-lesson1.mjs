@@ -62,7 +62,7 @@ for (const n of [2,4,5,6,8,9,10]) {
 assert.deepEqual(lesson.requiredQuestionNumbers, []);
 assert.ok(lesson.questions.every(q => !q.criticalAnswerKeys));
 const built = JSON.parse(await fs.readFile('data/cs15/course-data.json', 'utf8'));
-assert.deepEqual(built.modules.map(m => m.number), [1,2,3,5,6,7], 'All accepted CS15 tests must be present');
+assert.deepEqual(built.modules.map(m => m.number), [1,2,3,5,6,7,8,9], 'All accepted CS15 tests must be present');
 for (const module of built.modules) {
   const raw = JSON.parse(await fs.readFile(`data/cs15/lessons/lesson-${String(module.number).padStart(2,'0')}.json`, 'utf8'));
   for (const field of ['questions','instructionsMarkdown','sourceSha256','keySha256','assessmentMapFile','passThresholdValue','requiredQuestionNumbers']) {
