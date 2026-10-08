@@ -48,6 +48,7 @@ jobs:
           node scripts/test-cs15-lesson5.mjs
           node scripts/test-cs15-lesson6.mjs
           node scripts/test-cs15-lesson7.mjs
+          node scripts/test-cs15-lesson8.mjs
 
       - name: Add Pages marker
         run: touch "./Платформа крипто-курса/.nojekyll"
