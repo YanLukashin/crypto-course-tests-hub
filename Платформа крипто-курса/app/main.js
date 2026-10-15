@@ -17,7 +17,7 @@ const CS14_DISPLAY_MODULES = [
   { number: 7, id: 'lesson-7', title: 'Алгоритмический трейдинг + психология решений' },
   { number: 8, id: 'lesson-8', title: 'Управление портфелем и ребаланс' },
   { number: 9, id: 'lesson-9', title: 'DeFi: теория и механики' },
-  { number: 10, id: 'lesson-10', title: 'DeFi: совместная сборка пула' },
+  { number: 10, id: 'lesson-10', title: 'DeFi: инфраструктура, стейблкоины и займы' },
   { number: 11, id: 'lesson-11', title: 'Стратегии на падающем и боковом рынке' },
   { number: 12, id: 'lesson-12', title: 'Стратегии при малом депозите ($200–$1000)' },
   { number: 13, id: 'lesson-13', title: 'ИИ для анализа криптопроектов' },
