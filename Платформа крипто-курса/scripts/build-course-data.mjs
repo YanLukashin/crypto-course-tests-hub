@@ -171,8 +171,9 @@ const normalizeModule = (lessonId, raw, cohort) => {
   if (cohort.id === 'cs15') {
     const bloomLevels = new Set(['Знание', 'Понимание', 'Применение', 'Анализ', 'Синтез', 'Оценка']);
     const difficulties = new Set(['Лёгкая', 'Средняя', 'Сложная']);
-    if (raw.questions.length !== 10 || !Array.from({ length: 10 }, (_, i) => i + 1).every((n) => questionNumbers.has(n))) {
-      fail(`${lessonId}: CS15 требует десять вопросов с номерами 1–10`);
+    const expectedCount = raw.questions.length;
+    if (expectedCount < 10 || !Array.from({ length: expectedCount }, (_, i) => i + 1).every((n) => questionNumbers.has(n))) {
+      fail(`${lessonId}: CS15 требует не менее десяти вопросов с номерами 1–N подряд`);
     }
     if (!raw.assessmentMapFile || !raw.sourceFile || !/^[a-f0-9]{64}$/.test(raw.sourceSha256 || '') || !/^[a-f0-9]{64}$/.test(raw.keySha256 || '')) {
       fail(`${lessonId}: CS15 требует ссылку на карту целей, исходник и SHA-256 теста/ключа`);
@@ -225,6 +226,7 @@ const normalizeModule = (lessonId, raw, cohort) => {
     courseId: raw.courseId || cohort.id,
     contentVersion: raw.contentVersion || '',
     title: raw.title,
+    ...(raw.displayLabel ? { displayLabel: raw.displayLabel } : {}),
     testTitle: raw.testTitle || raw.title,
     sourceFile: raw.sourceFile || '',
     ...(cohort.id === 'cs15' ? {

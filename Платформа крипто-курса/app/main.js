@@ -1,4 +1,4 @@
-const APP_VERSION = '2026-09-24-2';
+const APP_VERSION = '2026-10-26-1';
 const COURSE_DATA_URLS = {
   cs14: `./data/course-data.json?v=${APP_VERSION}`,
   cs15: `./data/cs15/course-data.json?v=${APP_VERSION}`
@@ -421,6 +421,7 @@ const getModuleState = (moduleId) => {
   return state.tests[moduleId];
 };
 
+const getModuleLabel = (module) => module.displayLabel || `Занятие ${module.number}`;
 const getModules = () => state.data?.modules || [];
 const isModuleAvailable = (moduleOrId) => {
   const moduleId = typeof moduleOrId === 'string' ? moduleOrId : moduleOrId?.id;
@@ -658,7 +659,7 @@ const renderSidebar = () => {
 
       return `
         <button class="nav-item ${active} ${statusClass}" data-nav="module" data-module-id="${module.id}" ${available ? '' : 'disabled'}>
-          Занятие ${module.number}: ${escapeHtml(module.title)}
+          ${escapeHtml(getModuleLabel(module))}: ${escapeHtml(module.title)}
           <div class="nav-item-meta">${moduleStatusLabel(module)}</div>
         </button>
       `;
@@ -727,7 +728,7 @@ const renderHub = () => {
             return `
               <article class="module-card ${available ? '' : 'locked'}">
                 <div class="module-card-top">
-                  <div class="module-number">Занятие ${module.number}</div>
+                  <div class="module-number">${escapeHtml(getModuleLabel(module))}</div>
                   <div class="module-status">${escapeHtml(moduleStatusLabel(module))}</div>
                 </div>
                 <h3 class="module-title">${escapeHtml(module.title)}</h3>
@@ -1444,7 +1445,7 @@ const renderModuleTest = () => {
 
   return `
     <section class="screen">
-      <h1 class="headline">Занятие ${module.number}</h1>
+      <h1 class="headline">${escapeHtml(getModuleLabel(module))}</h1>
       <div class="subline">[Exam Mode] ${escapeHtml(module.title)}</div>
 
       <div class="panel">
@@ -1610,7 +1611,7 @@ const buildResultText = (module) => {
     `${state.data.siteTitle}`,
     `Поток: ${getCourseConfig().label}`,
     `Курс: ${state.data.courseTitle || 'BlockCapital Crypto Summit'}`,
-    `Занятие ${module.number}: ${module.title}`,
+    `${getModuleLabel(module)}: ${module.title}`,
     `Результат: ${result.score}/${result.total} (${result.percent}%)`,
     `Статус: ${result.passed ? 'сдан' : module.failureMessage || 'не сдан'}`,
     `Проходной уровень: ${module.passThreshold || '—'}`,
