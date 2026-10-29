@@ -24,7 +24,7 @@ assert.deepEqual(lesson.questions.map(q => q.correctAnswer), KEYS);
 assert.deepEqual(lesson.requiredQuestionNumbers, []);
 assert.equal(lesson.passThresholdValue, 12);
 assert.equal(lesson.passThreshold, '12/15');
-assert.deepEqual(built.modules.map(m => m.number), [1,2,3,5,6,7,8,10,11]);
+assert.deepEqual(built.modules.map(m => m.number), [1,2,3,5,6,7,8,10,11,14]);
 assert.deepEqual(built.modules.find(m => m.number === 11), {...lesson,totalQuestions:15});
 assert.equal(built.modules.filter(m => m.displayLabel).length, 1, 'displayLabel only on lesson 11');
 const element = {addEventListener(){},classList:{add(){},remove(){},toggle(){}},querySelectorAll(){return[];},setAttribute(){},removeAttribute(){},innerHTML:''};

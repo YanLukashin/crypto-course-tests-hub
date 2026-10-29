@@ -1,4 +1,4 @@
-const APP_VERSION = '2026-10-26-1';
+const APP_VERSION = '2026-10-29-1';
 const COURSE_DATA_URLS = {
   cs14: `./data/course-data.json?v=${APP_VERSION}`,
   cs15: `./data/cs15/course-data.json?v=${APP_VERSION}`
